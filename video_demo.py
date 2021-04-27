@@ -41,11 +41,44 @@ def prep_image(img, inp_dim):
     img_ = torch.from_numpy(img_).float().div(255.0).unsqueeze(0)
     return img_, orig_im, dim
 
-def write(x, img):
+def doOverlap(l1, r1, l2, r2):
+     
+    # To check if either rectangle is actually a line
+      # For example  :  l1 ={-1,0}  r1={1,1}  l2={0,-1}  r2={0,1}
+       
+    if (l1[0] == r1[0] or l1[1] == r2[1] or l2[0] == r2[0] or l2[1] == r2[1]):
+        # the line cannot have positive overlap
+        print("1")
+        return False
+       
+     
+    # If one rectangle is on left side of other
+    if(l1[0] >= r2[0] or l2[0] >= r1[0]):
+        print("2")
+        return False
+ 
+    # If one rectangle is above other
+    if(l1[1] >= r2[1] or l2[1] >= r1[1]):
+        print("3")
+        return False
+ 
+    return True
+
+def write(x, img,d1,d2):
     c1 = tuple(x[1:3].int())
     c2 = tuple(x[3:5].int())
     cls = int(x[-1])
     label = "{0}".format(classes[cls])
+    if label != "person":
+        return
+    
+    c3 = torch.tensor(c1).tolist()
+    c4 = torch.tensor(c2).tolist()
+    print(d1[0],d1[1],d2[0],d2[1],c3[0],c3[1],c4[0],c4[1])
+    
+    if(doOverlap(d1,d2,c3,c4)):
+        label = "warning"
+    
     color = random.choice(colors)
     cv2.rectangle(img, c1, c2,color, 1)
     t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
@@ -123,6 +156,13 @@ if __name__ == '__main__':
     while cap.isOpened():
         
         ret, frame = cap.read()
+        height,width = frame.shape[:2]
+        d1 = int(2*width/6),0
+        d2 = int(4*width/5),height
+        color = (0,0,1)
+        thickness = 1
+        image = cv2.rectangle(frame,d1,d2,color,thickness)
+        cv2.imshow("frame", image)
         if ret:
             
 
@@ -166,7 +206,7 @@ if __name__ == '__main__':
             classes = load_classes('data/coco.names')
             colors = pkl.load(open("pallete", "rb"))
             
-            list(map(lambda x: write(x, orig_im), output))
+            list(map(lambda x: write(x, orig_im,d1,d2), output))
             
             
             cv2.imshow("frame", orig_im)
